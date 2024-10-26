@@ -1,0 +1,181 @@
+/*
+Universidad Del Valle de Guatemala
+Facultad de Ingeniería
+Departamento de Electrónica, Mecatrónica y Biomédica
+Electrónica Digital 2
+
+Susan Daniela Guevara Catalán - 22519
+*/
+
+/********** LIBRERÍAS *********/
+#include <Arduino.h>
+#include "Wire.h" // Librería para la comunicación I2C
+#include <ESP32SPISlave.h> // Librería para la comunicación SPI
+
+/********** DEFINICIÓN DE PINES ********/
+// Pin donde está conectado el potenciómetro
+#define pot 35 
+// Pines donde están conectados los LEDs
+#define Led1 14
+#define Led2 26
+#define Led3 33
+
+// CONFIGURACIÓN SPI
+ESP32SPISlave slave;
+
+// Pines para la comunicación SPI
+const int VSPI_MISO = 19;
+const int VSPI_MOSI = 23;
+const int VSPI_SCLK = 18;
+const int VSPI_SS = 5;
+
+static constexpr uint32_t BUFFER_SIZE {32};
+uint8_t spi_slave_tx_buf[BUFFER_SIZE]; // Transmite datos por SPI
+uint8_t spi_slave_rx_buf[BUFFER_SIZE]; // Recibe datos por SPI
+
+// Conoce lo que el núcleo le envío a la STM32
+char cmd; 
+char mil;
+char decena;
+char centena;
+char unidad;
+// Variables que almacenan la conversión de ASCII a números enteros
+char milConvertido;
+char centenaConvertido;
+char decenaConvertido;
+char unidadConvertido;
+
+// CONFIGURACIÓN I2C
+// Dirección del dispositivo
+#define I2C_DEV_ADDR 0x55
+
+/********** PROTOTIPOS DE FUNCIONES ********/
+int tiempo(char numero);
+void onRequest();
+void onReceive(int len);
+
+/********** CONFIGURACIÓN INICIAL DE LOS PINES ********/
+void setup() {
+  // INICIALIZACIÓN DE SPI
+  // Inicia la comunicación serie
+  Serial.begin(115200);
+  delay(2000);
+  // Inicia la comunicación SPI
+  slave.setDataMode(SPI_MODE0);
+  slave.setQueueSize(1);
+  slave.begin(VSPI);
+  // INICIALIZACIÓN DE PINES
+  // Definir el potenciómetro como entrada
+  pinMode(pot, INPUT);
+  // Definir los LEDs como salidas
+  pinMode(Led1, OUTPUT);
+  pinMode(Led2, OUTPUT);
+  pinMode(Led3, OUTPUT);
+  // Clear buffers para SPI
+  memset(spi_slave_tx_buf,0,BUFFER_SIZE);
+  memset(spi_slave_rx_buf,0,BUFFER_SIZE);
+  // INICIALIZACIÓN DE I2C
+  Serial.setDebugOutput(true);
+  Wire.onReceive(onReceive);
+  Wire.onRequest(onRequest);
+  Wire.begin((uint8_t)I2C_DEV_ADDR);
+}
+
+void loop() {
+  slave.wait(spi_slave_rx_buf, spi_slave_tx_buf, BUFFER_SIZE);
+  while(slave.available()){
+    Serial.print("Command.receive: ");
+    Serial.println(spi_slave_rx_buf[0]);
+    Serial.print("Mil: ");
+    Serial.println(spi_slave_rx_buf[2]);
+    Serial.print("Centena: ");
+    Serial.println(spi_slave_rx_buf[3]);
+    Serial.print("Decena: ");
+    Serial.println(spi_slave_rx_buf[4]);
+    Serial.print("Unidad: ");
+    Serial.println(spi_slave_rx_buf[5]);
+    cmd=spi_slave_rx_buf[0];
+    mil=spi_slave_rx_buf[2];
+    centena=spi_slave_rx_buf[3];
+    decena=spi_slave_rx_buf[4];
+    unidad=spi_slave_rx_buf[5];
+    // Aquí se envía un comando de finalización
+    spi_slave_tx_buf[0] = 0; // Indica que terminó
+    slave.pop();
+  }
+
+  milConvertido=tiempo(mil);
+  centenaConvertido=tiempo(centena);
+  decenaConvertido=tiempo(decena);
+  unidadConvertido=tiempo(unidad);
+
+  // Concatena los valores que fueron recibidos por SPI
+  int tiempo= (milConvertido*1000) + (centenaConvertido*100) + (decenaConvertido*10)+ unidadConvertido;
+
+  Serial.println(tiempo);
+
+  if(cmd==49){
+    digitalWrite(Led1,HIGH);
+    delay(tiempo);
+    // Vacía las variables para reiniciarlas
+    cmd=' ';
+    mil=' ';
+    centena=' ';
+    decena=' ';
+    unidad=' ';
+    digitalWrite(Led1,LOW);
+  }
+
+  if(cmd==50){
+    digitalWrite(Led2,HIGH);
+    delay(tiempo);
+    // Vacía las variables para reiniciarlas
+    cmd=' ';
+    mil=' ';
+    centena=' ';
+    decena=' ';
+    unidad=' ';
+    digitalWrite(Led2,LOW);
+  }
+
+  if(cmd==51){
+    digitalWrite(Led3,HIGH);
+    delay(tiempo);
+    // Vacía las variables para reiniciarlas
+    cmd=' ';
+    mil=' ';
+    centena=' ';
+    decena=' ';
+    unidad=' ';
+    digitalWrite(Led3,LOW);
+  }
+}
+
+/********* DEFINICIÓN DE FUNCIONES ********/
+// Convierte los número de ASCII a un número entero. Parámetro: Char enviado por SPI
+int tiempo(char numero){
+  int conversion = numero - '0'; // Resta las letras en ASCII para obtener el valor decimal
+  return conversion;
+}
+// Se solicita el valor del potenciometro
+void onRequest(){
+  // Lee el valor analógico del potenciómetro
+  unsigned int valorPot = analogRead(pot);
+  int numero=map(valorPot, 0, 4095, 0, 255);  // Escala los 4095 a 255
+  // Envía la variable por I2C
+  Wire.print(numero);
+  // Imprime en el monitor serial para saber que valor se está enviando
+  Serial.print("onRequest:");
+  Serial.println(numero);
+}
+
+/*
+// Cuando recibe del núcleo
+void onReceive(int len){
+  Serial.printf("onReceive[%d]:",len);
+  while(Wire.available()){
+    uint8_t incomingByte=Wire.read();
+    Serial.write(incomingByte);
+  }
+}
+*/
