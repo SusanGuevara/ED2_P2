@@ -94,6 +94,7 @@ void loop() {
     Serial.println(spi_slave_rx_buf[4]);
     Serial.print("Unidad: ");
     Serial.println(spi_slave_rx_buf[5]);
+    // Las variables guardan el valor según el lugar del arreglo
     cmd=spi_slave_rx_buf[0];
     mil=spi_slave_rx_buf[2];
     centena=spi_slave_rx_buf[3];
