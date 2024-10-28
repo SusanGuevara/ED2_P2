@@ -14,11 +14,11 @@ Susan Daniela Guevara Catalán - 22519
 
 /********** DEFINICIÓN DE PINES ********/
 // Pin donde está conectado el potenciómetro
-#define pot 35 
+#define pot 34 
 // Pines donde están conectados los LEDs
 #define Led1 14
 #define Led2 26
-#define Led3 33
+#define Led3 25
 
 // CONFIGURACIÓN SPI
 ESP32SPISlave slave;
@@ -162,7 +162,7 @@ int tiempo(char numero){
 void onRequest(){
   // Lee el valor analógico del potenciómetro
   unsigned int valorPot = analogRead(pot);
-  int numero=map(valorPot, 0, 4095, 0, 255);  // Escala los 4095 a 255
+  int numero=map(valorPot, 0, 4095, 100, 400);  // Escala los 4095 a 400
   // Envía la variable por I2C
   Wire.print(numero);
   // Imprime en el monitor serial para saber que valor se está enviando
@@ -170,7 +170,6 @@ void onRequest(){
   Serial.println(numero);
 }
 
-/*
 // Cuando recibe del núcleo
 void onReceive(int len){
   Serial.printf("onReceive[%d]:",len);
@@ -179,4 +178,4 @@ void onReceive(int len){
     Serial.write(incomingByte);
   }
 }
-*/
+
